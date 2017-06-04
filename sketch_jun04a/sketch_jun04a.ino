@@ -127,26 +127,83 @@ void setup()
 }
 
 
-void printMsg(unsigned long *msg)
+bool MSG[64];
+
+bool convertMEMORY(unsigned long *msg)
 {
-  for(unsigned i=1; i<128;i+=2)
+  unsigned MSGI=0;
+  bool ret=true;
+
+  for(unsigned i=0; i<128;i+=2)
   {
-    Serial.print("[");
-    Serial.print(i,DEC);
-    Serial.print("]");
-    
+    //Serial.print("["); Serial.print(i,DEC); Serial.print("]");
+
     unsigned long mark = msg[i+0];
-    if(mark > 350 && mark < 600)   { Serial.print(" 0 "); } //ok +/- 200 us
+        
+    
+    if(mark > 350 && mark < 600)   { MSG[MSGI]=false; /*Serial.print(" 0 ");*/ }
     else
-    if(mark > 1250 && mark < 1450) { Serial.print(" 1 "); } //ok +/- 200 us
-    else                           { Serial.print(mark); Serial.print(" MARK ERROR ");}
+    if(mark > 1250 && mark < 1450) { MSG[MSGI]=true;  /*Serial.print(" 1 ");*/ }
+    else
+    {
+      if(i==0)
+      {
+        MSGI--;//NOTE: skip fist pair in OUPTUT
+        if(mark > 1600 && mark < 1900) { 
+        } 
+        else
+        { 
+          ret=false;
+          //Serial.print(mark,DEC); Serial.print(" START ERROR "); 
+        } 
+      }
+      //else{ Serial.print(mark); Serial.print(" MARK ERROR "); }
+    }
 
     unsigned long space = msg[i+1];
-    if(space>300 && space <500) { } //ok +/- 200 us
-    else                        { Serial.print(space); Serial.print(" SPACE ERROR "); }
+    if(space>300 && space<500) { /*Serial.print("space");*/} //ok +/- 200 us
+    else                       { ret=false; /*Serial.print(space); Serial.print(" SPACE ERROR ");*/ }
 
-    Serial.println();
+    //Serial.println();
+    MSGI++;
   }
+  return ret;
+}
+
+
+bool HEAD[24]       ={ 1,0,0,0,1,0,0,0, 0,1,0,1,1,0,1,1, 1,1,1,0,1,0,0,1 };
+                     
+bool TYPE_A[16]     ={ 0,0,0,0,1,1,1,1, 0,0,0,0,0,0,0,0 };
+bool TYPE_B[16]     ={ 0,0,0,0,0,0,0,0, 1,1,1,1,0,0,0,1 };
+
+bool BODY_TYPEA[24] ={ 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,1,0,0,1,1,1,0 };
+bool BODY_BRIGH[24] ={ 0,0,0,1,1,1,0,0, 0,0,0,0,0,0,0,0, 1,0,0,1,0,0,1,0 };
+bool BODY_TIMER[24] ={ 1,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,1,0,1,0,0,0 };
+bool BODY_MODE [24] ={ 1,1,1,0,1,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,1,0,1,0,0 };
+bool BODY_ANTI [24] ={ 1,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0, 0,1,0,1,1,0,0,0 };
+bool BODY_TURBO[24] ={ 0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0, 1,0,0,1,1,0,0,0 };
+bool BODY_FAN  [24] ={ 0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0, 1,0,0,0,0,1,0,0 };
+bool BODY_AUTO [24] ={ 0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,1,0,0,1,0,0,0 };
+bool BODY_LOCK [24] ={ 0,0,1,0,1,0,0,0, 0,0,0,0,0,0,0,0, 1,0,1,0,0,1,0,0 };
+bool BODY_ONOFF[24] ={ 1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,1,0,0,1,0,0,0 };
+
+bool compare(bool *A,bool *B, unsigned startA,unsigned len)
+{
+   unsigned Bi=0;
+   for(unsigned i=startA; i<startA+len; i++,Bi++)
+   {
+      if(A[i]!=B[Bi])
+      {
+        /*
+        Serial.print("comapre fail");
+        Serial.print(" A[");  Serial.print( i);    Serial.print("]="); Serial.print(A[i]);
+        Serial.print(" != ");
+        Serial.print(" B[");  Serial.print(Bi);    Serial.print("]="); Serial.print(B[i]);
+        Serial.print(" !");*/
+        return false;   
+      }
+   }
+   return true;
 }
 
 void loop()
@@ -161,41 +218,49 @@ void loop()
   {
     noInterrupts();           // disable all interrupts
     {
-      Serial.print("Rec: #");
-      Serial.print(MEMORYI,DEC);
-      Serial.println();
+      Serial.print("Rec: #");  Serial.print(MEMORYI,DEC);   Serial.println();
 
-      Serial.println(MEMORY[0]);
-/*
-      if(MEMORYI==264)
+      if( MEMORYI==264 && //check len
+          (MEMORY[0]>3300 && MEMORY[0]<3600)//check fist
+        )
       {
         unsigned long *part1=&MEMORY[1];
         unsigned long *part2=&MEMORY[133];
-        printMsg(part1);
-        printMsg(part2);      
-      }
-*/
-      for(unsigned i=1; i<MEMORYI-1;i+=2)
-      {
-        Serial.print("[");
-        Serial.print(i,DEC);
-        Serial.print("]");
-        
-        unsigned long mark = MEMORY[i+0];
-        if(mark > 350 && mark < 600)   { Serial.print(" 0 "); } //ok +/- 200 us
-        else
-        if(mark > 1250 && mark < 1450) { Serial.print(" 1 "); } //ok +/- 200 us
-        else                           { Serial.print(mark); Serial.print(" MARK ERROR ");}
-        
-        
-        unsigned long space = MEMORY[i+1];
-        if(space>300 && space <500) { } //ok +/- 200 us
-        else                        { Serial.print(space); Serial.print(" SPACE ERROR "); }
+        // printALl
+        Serial.print("head: "); Serial.print(MEMORY[0]); Serial.print(" timeout: "); Serial.print(MEMORY[MEMORYI-1]);   Serial.println();
+        convertMEMORY(part1);    for(int i=1;i<64;i++) {Serial.print(MSG[i]);}Serial.print(" ");
+        convertMEMORY(part2);    for(int i=1;i<64;i++) {Serial.print(MSG[i]);}Serial.print(" ");
+        // ---
 
+        convertMEMORY(part1);
+        if(!compare(MSG,HEAD,          0,24))  {Serial.print("errorA1");}
+        if(!compare(MSG,TYPE_A,       24,16))  {Serial.print("errorA2");}
+        if(!compare(MSG,BODY_TYPEA,   40,24))  {Serial.print("errorA3");}
+
+        convertMEMORY(part2);
+        if(!compare(MSG,HEAD,          0,24))  {Serial.print("errorB1");}
+        if(!compare(MSG,TYPE_B,       24,16))  {Serial.print("errorB2");}
+
+        if(compare(MSG,BODY_BRIGH,    40,24)) Serial.print("BRIGHT");
+        else
+        if(compare(MSG,BODY_TIMER,    40,24)) Serial.print("TIMER");
+        else
+        if(compare(MSG,BODY_MODE,     40,24))  Serial.print("MODE");
+        else
+        if(compare(MSG,BODY_ANTI,     40,24))  Serial.print("ANTI");
+        else
+        if(compare(MSG,BODY_TURBO,    40,24)) Serial.print("TURBO");
+        else
+        if(compare(MSG,BODY_FAN,      40,24))   Serial.print("FAN");
+        else
+        if(compare(MSG,BODY_AUTO,     40,24))  Serial.print("AUTO");
+        else
+        if(compare(MSG,BODY_LOCK,     40,24))  Serial.print("LOCK");
+        else
+        if(compare(MSG,BODY_ONOFF,    40,24)) Serial.print("ONOFF");
+        else                                  Serial.print("?????");
         Serial.println();
       }
-      
-      Serial.println(MEMORY[MEMORYI-1]);
 
       reset();
     }
