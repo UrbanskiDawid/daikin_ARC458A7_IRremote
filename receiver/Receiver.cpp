@@ -41,7 +41,7 @@ public:
   {
     *buff=MEMORY;
     len=MEMORYI;
-    return (Status==timeout || Status==stop_overflow);
+    return (Status==timeout || Status==stop_overflow) && MEMORYI > 10;
   }
   
   void begin()
@@ -98,10 +98,12 @@ public:
   {
     MEMORYI=0;
     Status=idle;
+    for(unsigned i =0;i<MEMORYLEN;i++) {MEMORY[i] =0;}
   }
   
   
-  void tick(){
+  void tick()
+  {
     TCNT1 = timer1_counter;   // preload timer
     bool IN = digitalRead(pin); 
   

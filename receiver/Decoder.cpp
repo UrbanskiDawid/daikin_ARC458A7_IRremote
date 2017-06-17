@@ -45,7 +45,7 @@ class Decoder
       unsigned long mark = msg[i+1];
       if(mark >  350 && mark <  600) { OUT[outI]=false; }
       else
-      if(mark > 1200 && mark < 1450) { OUT[outI]=true;  }     
+      if(mark > 1200 && mark < 1500) { OUT[outI]=true;  }     
       else                           { ret=false; }
   
       outI++;
@@ -84,7 +84,7 @@ public:
       isOK=true;
 
       //check len
-      if( len!=264 ) {Serial.println("error len"); isOK=false; return;}
+      if( len!=264 ) {Serial.print("error len"); Serial.print(len); Serial.println(" expected 264"); isOK=false; return;}
 
       //MESSAGE_PART1
       //check fist  (here is start of 1 msg)
@@ -192,7 +192,7 @@ public:
       else                                           { Serial.print("markError"); }
       Serial.println();
 
-       for(unsigned j=2;j<64*2;j+=2)
+       for(unsigned j=2;j<=64*2+2;j+=2)
        {
           unsigned long *space = buffer[j+i+0];
           unsigned long *mark = buffer[j+i+1];
@@ -212,7 +212,7 @@ public:
           
           if(mark >  350 && mark <  600) { Serial.print("mark0"); }
           else
-          if(mark > 1200 && mark < 1450) { Serial.print("mark1");  }
+          if(mark > 1200 && mark < 1500) { Serial.print("mark1");  }
           else                           { Serial.print("markError");  }
 
           Serial.println();
