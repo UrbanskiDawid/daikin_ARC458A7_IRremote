@@ -1,5 +1,4 @@
 #define IR_SEND_PWM_PIN 11
-#define IR_CLOCK_RATE 36000L
 
 class Sender
 {
@@ -26,27 +25,27 @@ public:
 
 private:
 
-  void enableIROut(unsigned char khz)
+  void enableIROut()
   {    
     TIMSK2 = 0;
     TCCR2A = _BV(WGM21) | _BV(COM2A0);//18.11.1 TCCR2A – Timer/Counter Control Register A
     TCCR2B =_BV(CS20);                //18.11.2 TCCR2B – Timer/Counter Control Register B
-    OCR2A = (F_CPU/(IR_CLOCK_RATE*2L)-1);
+    OCR2A = (F_CPU/(36000L*2L)-1);    //36000L - 36kHz
  }
 
-  void mark(unsigned int time)
+  void mark(const unsigned int time)
   {
     pinMode(pin, OUTPUT);
     delayMicroseconds(time);
   }
 
-  void space(unsigned int time)
+  void space(const unsigned int time)
   {
     pinMode(pin, INPUT);
     delayMicroseconds(time);
   }
 
-  void send(bool *buff)
+  void send(const bool *buff)
   {    
     mark(3600);
     space(1600);
@@ -61,13 +60,15 @@ private:
    space(0);
   }
 
-  void generateMessages(bool * buff, const byte *header, const byte * body)
+  void generateMessages(bool * ret, 
+                        const byte *header,
+                        const byte * body)
   {    
-    int buffI=0;
+    int retI=0;
 
-    for(int i=0;i<3;i++) for(int b=7;b>=0;b--)    buff[buffI++]=bitRead(PREFIX[i],b);
-    for(int i=0;i<2;i++) for(int b=7;b>=0;b--)    buff[buffI++]=bitRead(header[i],b);
-    for(int i=0;i<3;i++) for(int b=7;b>=0;b--)    buff[buffI++]=bitRead(body[i],b);
+    for(int i=0;i<3;i++) for(int b=7;b>=0;b--)    ret[retI++]=bitRead(PREFIX[i],b);
+    for(int i=0;i<2;i++) for(int b=7;b>=0;b--)    ret[retI++]=bitRead(header[i],b);
+    for(int i=0;i<3;i++) for(int b=7;b>=0;b--)    ret[retI++]=bitRead(body[i],  b);
   }
 
 public:
@@ -87,7 +88,7 @@ public:
     bool message2[64];
     generateMessages(message2,HEADER_BODY,body);
        
-    enableIROut(36);
+    enableIROut();
     
     //header
     send(message1);
