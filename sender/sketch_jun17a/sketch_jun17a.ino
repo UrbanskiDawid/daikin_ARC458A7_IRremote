@@ -4,14 +4,27 @@
 class Sender
 {
   const int pin;
-  
+
+  //PREFIX(3B) + HEADER(2B) + BODY(3B)
+  //============================================================================+
+  const byte PREFIX[3]      ={ 0b10001000, 0b01011011, 0b11101001 };
+  const byte HEADER_BEGIN[2]={ 0b00001111, 0b00000000 };
+  const byte HEADER_BODY[2] ={ 0b00000000, 0b11110001 };
+  const byte BODY_BEGIN[3] ={ 0b00000000, 0b00000000, 0b01001110 };  
+ //============================================================================+
+
 public:
-  Sender(int outPin):
-    pin(outPin)
-  {
-    pinMode(pin, INPUT);//output dissabled
-    digitalWrite(pin, LOW);
-  }
+  const byte BODY_BRIGH[3] ={ 0b00011100, 0b00000000, 0b10010010 };
+  const byte BODY_TIMER[3] ={ 0b11000000, 0b00000000, 0b00101000 };
+  const byte BODY_MODE [3] ={ 0b11101000, 0b00000000, 0b00010100 };
+  const byte BODY_ANTI [3] ={ 0b10010000, 0b00000000, 0b01011000 };
+  const byte BODY_TURBO[3] ={ 0b00010000, 0b00000000, 0b10011000 };
+  const byte BODY_FAN  [3] ={ 0b00001000, 0b00000000, 0b10000100 };
+  const byte BODY_AUTO [3] ={ 0b01000000, 0b00000000, 0b11001000 };
+  const byte BODY_LOCK [3] ={ 0b00101000, 0b00000000, 0b10100100 };
+  const byte BODY_ONOFF[3] ={ 0b10000000, 0b00000000, 0b01001000 };
+
+private:
 
   void enableIROut(unsigned char khz)
   {    
@@ -34,10 +47,10 @@ public:
   }
 
   void send(bool *buff)
-  {
+  {    
     mark(3600);
     space(1600);
-
+   
     for(int i=0;i<64;i++)
     {
       mark(400);
@@ -45,28 +58,69 @@ public:
    }
 
    mark (400);
-   space(29900U);
+   space(0);
   }
 
-  void sendOnOff()
+  void generateMessages(bool * buff, const byte *header, const byte * body)
   {    
-    enableIROut(36);
-        
-    //header
-    bool PART1[64]       ={ 1,0,0,0,1,0,0,0, 0,1,0,1,1,0,1,1, 1,1,1,0,1,0,0,1, /*TYPE_A[16]*/ 0,0,0,0,1,1,1,1, 0,0,0,0,0,0,0,0, /*BODY_TYPEA*/ 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,1,0,0,1,1,1,0 };
-    send(PART1);
+    int buffI=0;
 
+    for(int i=0;i<3;i++) for(int b=7;b>=0;b--)    buff[buffI++]=bitRead(PREFIX[i],b);
+    for(int i=0;i<2;i++) for(int b=7;b>=0;b--)    buff[buffI++]=bitRead(header[i],b);
+    for(int i=0;i<3;i++) for(int b=7;b>=0;b--)    buff[buffI++]=bitRead(body[i],b);
+  }
+
+public:
+
+  Sender(int outPin):
+    pin(outPin)
+  {
+    pinMode(pin, INPUT);//output dissabled
+    digitalWrite(pin, LOW);
+  }
+  
+  void sendCommand(const byte *body)
+  { 
+    bool message1[64];
+    generateMessages(message1,HEADER_BEGIN,BODY_BEGIN);
+
+    bool message2[64];
+    generateMessages(message2,HEADER_BODY,body);
+       
+    enableIROut(36);
+    
+    //header
+    send(message1);
+
+    //wait less than 30000 usec
+    delayMicroseconds(10000);
+    delayMicroseconds(10000);
+    delayMicroseconds( 9800);
+    //--
+    
     //payload
-    bool PART2[64]       ={ 1,0,0,0,1,0,0,0, 0,1,0,1,1,0,1,1, 1,1,1,0,1,0,0,1, /*TYPE_B[16]*/ 0,0,0,0,0,0,0,0, 1,1,1,1,0,0,0,1, /*BODY_ONOFF*/ 1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,1,0,0,1,0,0,0 };
-    send(PART2);
+    send(message2);
+
+    //create a 30000 usec delay before sending next command
+    delayMicroseconds(10000);
+    delayMicroseconds(10000);
+    delayMicroseconds(10000);
+    //--
   }
 };
 Sender sender(IR_SEND_PWM_PIN);
 
 void setup()
 { 
-  sender.sendOnOff();
+  sender.sendCommand(sender.BODY_ONOFF);
+  sender.sendCommand(sender.BODY_FAN);
+  sender.sendCommand(sender.BODY_FAN);
+  sender.sendCommand(sender.BODY_BRIGH);
+  sender.sendCommand(sender.BODY_BRIGH);
+  sender.sendCommand(sender.BODY_TIMER);
+  sender.sendCommand(sender.BODY_TIMER);
+  sender.sendCommand(sender.BODY_TIMER);
 }
 
-void loop(){ delay(100000); }//nothing to do: message will be send on arduino reset!
+void loop(){ delay(100000);}//nothing to do: message will be send on arduino reset!
 
